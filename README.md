@@ -44,11 +44,14 @@ src/
 Edit `.env`:
 
 ```env
-VITE_SSO_URL=http://localhost:4000
+VITE_SSO_URL=http://41.216.191.39:4000
 VITE_CLIENT_ID=purbalingga-pay
-VITE_REDIRECT_URI=http://localhost:5173/callback
+VITE_REDIRECT_URI=http://41.216.191.39:5173/callback
+VITE_PAY_HOME_URL=http://41.216.191.39:5173
 VITE_SCOPE=openid profile email
 ```
+
+Saat deploy ke VPS, ganti `localhost` dengan IP publik atau domain yang benar-benar bisa diakses dari luar jaringan lokal.
 
 ---
 
@@ -72,6 +75,7 @@ VITE_SCOPE=openid profile email
 - Tampilkan profil user
 - Manage active sessions
 - Revoke app consents
+- Tersedia tombol kembali ke halaman utama Purbalingga Pay
 
 ---
 
@@ -83,6 +87,7 @@ VITE_SCOPE=openid profile email
 4. Store token di localStorage
 5. Fetch user info dari `/oauth/userinfo`
 6. Redirect ke dashboard
+7. Klik "Kembali ke Purbalingga Pay" untuk membawa token yang sama kembali ke aplikasi Pay
 
 ---
 
@@ -139,13 +144,18 @@ Dashboard page dilindungi dengan `ProtectedRoute`:
 
 ## 🔗 Backend Requirements
 
-Backend SSO harus berjalan di `http://localhost:4000` dengan:
+Backend SSO harus berjalan di host yang bisa diakses dari jaringan luar, misalnya `http://41.216.191.39:4000`, dengan:
 - `/oauth/authorize` endpoint
 - `/oauth/token` endpoint
 - `/oauth/userinfo` endpoint
 - `/oauth/logout` endpoint
 - `/sessions` endpoint
 - `/consent` endpoint
+
+Untuk deployment VPS, pastikan juga:
+- `redirect_uri` yang dipakai frontend sudah didaftarkan di backend OAuth persis sama, termasuk protocol, host, port, dan path.
+- CORS backend mengizinkan origin frontend Pay dan SSO.
+- Service backend listen ke `0.0.0.0`, bukan hanya `localhost`, supaya bisa diakses dari luar server.
 
 ---
 

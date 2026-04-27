@@ -31,7 +31,7 @@ api.interceptors.response.use(
           const res = await api.post('/oauth/token', {
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
-            client_id: import.meta.env.VITE_CLIENT_ID,
+            client_id: import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso',
           });
 
           localStorage.setItem('access_token', res.data.access_token);

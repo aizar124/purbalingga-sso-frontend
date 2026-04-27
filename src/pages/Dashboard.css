@@ -40,6 +40,13 @@
   backdrop-filter: blur(16px);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 .dashboard-topbar h1 {
   margin: 6px 0 8px;
   font-size: clamp(2rem, 4vw, 3rem);
@@ -517,6 +524,14 @@
 
   .avatar-actions {
     align-items: flex-start;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .btn {
+    width: 100%;
   }
 
   .stack-item .btn,

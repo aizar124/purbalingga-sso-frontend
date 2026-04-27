@@ -22,7 +22,9 @@ export interface AuthContextType {
   token: string | null;
   loading: boolean;
   error: string | null;
-  loginWithSSO: () => void;
+  loginWithSSO: (targetApp?: 'sso' | 'pay') => void;
+  canReturnToPayHome: boolean;
+  returnToPayHome: () => void;
   register: (email: string, password: string, name: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -30,15 +32,39 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getBootstrapSsoAccessToken = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return new URLSearchParams(window.location.search).get('sso_access_token');
+};
+
+const SESSION_ORIGIN_KEY = 'auth_session_origin';
+const getStoredSessionOrigin = (): 'sso' | 'pay' | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const value = localStorage.getItem(SESSION_ORIGIN_KEY);
+  return value === 'pay' || value === 'sso' ? value : null;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    Boolean(localStorage.getItem('access_token')) || Boolean(getBootstrapSsoAccessToken())
+  );
   const [error, setError] = useState<string | null>(null);
+  const [sessionOrigin, setSessionOrigin] = useState<'sso' | 'pay' | null>(getStoredSessionOrigin());
 
   const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://localhost:4000';
-  const CLIENT_ID = import.meta.env.VITE_CLIENT_ID || 'purbalingga-pay';
-  const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:5173/callback';
+  const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
+  const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
+  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || `${window.location.origin}/callback`;
+  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'http://localhost:5173/callback';
+  const PAY_HOME_URL = import.meta.env.VITE_PAY_HOME_URL || PAY_REDIRECT_URI.replace(/\/callback\/?$/, '');
 
   // Generate random string
   const generateRandomString = (length: number) => {
@@ -67,24 +93,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Login with SSO
-  const loginWithSSO = useCallback(async () => {
+  const loginWithSSO = useCallback(async (targetApp: 'sso' | 'pay' = 'sso') => {
     try {
       setError(null);
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = await generateCodeChallenge(codeVerifier);
       const state = generateRandomString(32);
       const nonce = generateRandomString(32);
+      const clientId = targetApp === 'pay' ? PAY_CLIENT_ID : SSO_CLIENT_ID;
+      const redirectUri = targetApp === 'pay' ? PAY_REDIRECT_URI : SSO_REDIRECT_URI;
 
       // Save to localStorage (persist across page reload)
       localStorage.setItem('pkce_verifier', codeVerifier);
       localStorage.setItem('oauth_state', state);
       localStorage.setItem('oauth_nonce', nonce);
       localStorage.setItem('oauth_response_type', 'code');
-      localStorage.setItem('oauth_client_id', CLIENT_ID);
-      localStorage.setItem('oauth_redirect_uri', REDIRECT_URI);
+      localStorage.setItem('oauth_client_id', clientId);
+      localStorage.setItem('oauth_redirect_uri', redirectUri);
       localStorage.setItem('oauth_scope', import.meta.env.VITE_SCOPE || 'openid profile email');
       localStorage.setItem('oauth_code_challenge', codeChallenge);
       localStorage.setItem('oauth_code_challenge_method', 'S256');
+      localStorage.setItem(SESSION_ORIGIN_KEY, targetApp);
 
       console.log('OAuth params saved to localStorage');
       console.log('PKCE verifier:', codeVerifier.substring(0, 20) + '...');
@@ -93,8 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const params = new URLSearchParams({
         response_type: 'code',
-        client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
+        client_id: clientId,
+        redirect_uri: redirectUri,
         scope: import.meta.env.VITE_SCOPE || 'openid profile email',
         state,
         code_challenge: codeChallenge,
@@ -109,7 +138,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError('Failed to initiate login');
       console.error(err);
     }
-  }, [CLIENT_ID, REDIRECT_URI, SSO_URL]);
+  }, [PAY_CLIENT_ID, PAY_REDIRECT_URI, SSO_CLIENT_ID, SSO_REDIRECT_URI, SSO_URL]);
+
+  const returnToPayHome = useCallback(() => {
+    try {
+      if (!PAY_HOME_URL) {
+        throw new Error('URL utama Purbalingga Pay belum dikonfigurasi.');
+      }
+
+      const currentToken = token || localStorage.getItem('access_token');
+      const returnUrl = new URL(PAY_HOME_URL);
+
+      if (currentToken) {
+        returnUrl.searchParams.set('sso_access_token', currentToken);
+      }
+
+      window.location.href = returnUrl.toString();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal kembali ke Purbalingga Pay');
+      console.error(err);
+    }
+  }, [PAY_HOME_URL, token]);
 
   // Register
   const register = useCallback(
@@ -170,8 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         grant_type: 'authorization_code',
         code,
         code_verifier: verifier,
-        client_id: CLIENT_ID,
-        redirect_uri: REDIRECT_URI,
+        client_id: SSO_CLIENT_ID,
+        redirect_uri: SSO_REDIRECT_URI,
       });
 
       console.log('Token received');
@@ -180,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('refresh_token', res.data.refresh_token);
       localStorage.setItem('id_token', res.data.id_token);
       setToken(res.data.access_token);
+      setSessionOrigin((localStorage.getItem(SESSION_ORIGIN_KEY) as 'sso' | 'pay' | null) || 'sso');
 
       // Fetch user info
       console.log('Fetching user info...');
@@ -212,7 +262,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [CLIENT_ID, REDIRECT_URI]);
+  }, [SSO_CLIENT_ID, SSO_REDIRECT_URI]);
 
   // Logout
   const logout = useCallback(async () => {
@@ -224,6 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.clear();
       setUser(null);
       setToken(null);
+      setSessionOrigin(null);
       window.location.href = '/login';
     }
   }, []);
@@ -234,7 +285,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Checking login status...');
       console.log('Current path:', window.location.pathname);
 
+      const bootstrapToken = getBootstrapSsoAccessToken();
       const storedToken = localStorage.getItem('access_token');
+
+      if (bootstrapToken) {
+        console.log('Found bootstrap token from Pay profile, hydrating SSO session...');
+        localStorage.setItem('access_token', bootstrapToken);
+        localStorage.setItem(SESSION_ORIGIN_KEY, 'pay');
+        setToken(bootstrapToken);
+        setSessionOrigin('pay');
+
+        try {
+          const res = await api.get('/oauth/userinfo');
+          console.log('Bootstrap user logged in:', res.data);
+          setUser(res.data);
+        } catch (err) {
+          console.error('Bootstrap token invalid, clearing...');
+          localStorage.clear();
+          setToken(null);
+          setUser(null);
+          setSessionOrigin(null);
+        } finally {
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setLoading(false);
+        }
+
+        return;
+      }
 
       // Check if on callback page
       if (window.location.pathname === '/callback') {
@@ -247,6 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedToken) {
         console.log('Found stored token, fetching user info...');
         setToken(storedToken);
+        setSessionOrigin((getStoredSessionOrigin() as 'sso' | 'pay' | null) || 'sso');
         try {
           const res = await api.get('/oauth/userinfo');
           console.log('User logged in:', res.data);
@@ -255,6 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Token invalid, clearing...');
           localStorage.clear();
           setToken(null);
+          setSessionOrigin(null);
         }
       }
 
@@ -274,9 +353,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         error,
         loginWithSSO,
+        canReturnToPayHome: sessionOrigin === 'pay',
         register,
         logout,
         clearError,
+        returnToPayHome,
       }}
     >
       {children}

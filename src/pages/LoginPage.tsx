@@ -21,12 +21,40 @@ export const LoginPage: React.FC = () => {
     'nonce',
   ] as const;
   const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://localhost:4000';
-  const CLIENT_ID = import.meta.env.VITE_CLIENT_ID || 'purbalingga-pay';
-  const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:5173/callback';
+  const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
+  const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
+  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || `${window.location.origin}/callback`;
+  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'http://localhost:5173/callback';
   const SCOPE = import.meta.env.VITE_SCOPE || 'openid profile email';
+  const DEFAULT_TARGET_APP: 'sso' | 'pay' = 'sso';
+
+  const resolveTargetApp = () => {
+    const params = new URLSearchParams(window.location.search);
+    const redirectUri = params.get('redirect_uri');
+
+    if (redirectUri === PAY_REDIRECT_URI) {
+      return 'pay' as const;
+    }
+
+    return DEFAULT_TARGET_APP;
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const hasIncomingOauthRequest = Boolean(params.get('client_id') || params.get('redirect_uri') || params.get('state'));
+
+    if (!hasIncomingOauthRequest) {
+      localStorage.removeItem('pkce_verifier');
+      localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_nonce');
+      localStorage.removeItem('oauth_response_type');
+      localStorage.removeItem('oauth_client_id');
+      localStorage.removeItem('oauth_redirect_uri');
+      localStorage.removeItem('oauth_scope');
+      localStorage.removeItem('oauth_code_challenge');
+      localStorage.removeItem('oauth_code_challenge_method');
+      return;
+    }
 
     for (const key of oauthKeys) {
       const value = params.get(key);
@@ -87,16 +115,20 @@ export const LoginPage: React.FC = () => {
       }
     }
 
+    const targetApp = oauthParams.get('redirect_uri') === PAY_REDIRECT_URI ? 'pay' : resolveTargetApp();
+
     if (!oauthParams.get('client_id') || !oauthParams.get('redirect_uri')) {
       const codeVerifier = generateRandomString(128);
       const codeChallenge = await generateCodeChallenge(codeVerifier);
       const state = generateRandomString(32);
       const nonce = generateRandomString(32);
+      const clientId = targetApp === 'pay' ? PAY_CLIENT_ID : SSO_CLIENT_ID;
+      const redirectUri = targetApp === 'pay' ? PAY_REDIRECT_URI : SSO_REDIRECT_URI;
 
       localStorage.setItem('pkce_verifier', codeVerifier);
       localStorage.setItem('oauth_response_type', 'code');
-      localStorage.setItem('oauth_client_id', CLIENT_ID);
-      localStorage.setItem('oauth_redirect_uri', REDIRECT_URI);
+      localStorage.setItem('oauth_client_id', clientId);
+      localStorage.setItem('oauth_redirect_uri', redirectUri);
       localStorage.setItem('oauth_scope', SCOPE);
       localStorage.setItem('oauth_state', state);
       localStorage.setItem('oauth_code_challenge', codeChallenge);
@@ -104,17 +136,23 @@ export const LoginPage: React.FC = () => {
       localStorage.setItem('oauth_nonce', nonce);
 
       oauthParams.set('response_type', 'code');
-      oauthParams.set('client_id', CLIENT_ID);
-      oauthParams.set('redirect_uri', REDIRECT_URI);
+      oauthParams.set('client_id', clientId);
+      oauthParams.set('redirect_uri', redirectUri);
       oauthParams.set('scope', SCOPE);
       oauthParams.set('state', state);
       oauthParams.set('code_challenge', codeChallenge);
       oauthParams.set('code_challenge_method', 'S256');
       oauthParams.set('nonce', nonce);
+    } else if (!oauthParams.get('redirect_uri')) {
+      oauthParams.set('redirect_uri', targetApp === 'pay' ? PAY_REDIRECT_URI : SSO_REDIRECT_URI);
     }
 
     if (!oauthParams.get('response_type')) {
       oauthParams.set('response_type', 'code');
+    }
+
+    if (!oauthParams.get('redirect_uri')) {
+      oauthParams.set('redirect_uri', targetApp === 'pay' ? PAY_REDIRECT_URI : SSO_REDIRECT_URI);
     }
 
     window.location.href = `${SSO_URL}/oauth/authorize?${oauthParams.toString()}`;
@@ -244,7 +282,7 @@ export const LoginPage: React.FC = () => {
             <motion.button
               className="btn btn-secondary"
               type="button"
-              onClick={loginWithSSO}
+              onClick={() => loginWithSSO('sso')}
               disabled={loading}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

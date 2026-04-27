@@ -85,7 +85,7 @@ const normalizeOptionalValue = (value: string) => {
 };
 
 export const DashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, returnToPayHome, canReturnToPayHome } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string>(user?.picture || '');
@@ -325,14 +325,27 @@ export const DashboardPage: React.FC = () => {
           <p className="topbar-subtitle">Kelola identitas akun, keamanan login, dan aplikasi yang terhubung.</p>
         </div>
 
-        <motion.button
-          className="btn btn-secondary"
-          onClick={logout}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          Logout
-        </motion.button>
+        <div className="topbar-actions">
+          {canReturnToPayHome && (
+            <motion.button
+              className="btn btn-primary"
+              onClick={returnToPayHome}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Kembali ke Purbalingga Pay
+            </motion.button>
+          )}
+
+          <motion.button
+            className="btn btn-secondary"
+            onClick={logout}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            Logout
+          </motion.button>
+        </div>
       </motion.header>
 
       <motion.main

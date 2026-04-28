@@ -59,11 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [sessionOrigin, setSessionOrigin] = useState<'sso' | 'pay' | null>(getStoredSessionOrigin());
 
-  const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://localhost:4000';
+  const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://41.216.191.39:4000';
   const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
   const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
   const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || `${window.location.origin}/callback`;
-  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'http://localhost:5173/callback';
+  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'http://41.216.191.39:5173/callback';
   const PAY_HOME_URL = import.meta.env.VITE_PAY_HOME_URL || PAY_REDIRECT_URI.replace(/\/callback\/?$/, '');
 
   // Generate random string

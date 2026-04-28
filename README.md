@@ -10,7 +10,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Server berjalan di `http://localhost:5174`
+Server berjalan di `http://41.216.191.39:5174`
 
 ---
 
@@ -50,8 +50,6 @@ VITE_REDIRECT_URI=http://41.216.191.39:5173/callback
 VITE_PAY_HOME_URL=http://41.216.191.39:5173
 VITE_SCOPE=openid profile email
 ```
-
-Saat deploy ke VPS, ganti `localhost` dengan IP publik atau domain yang benar-benar bisa diakses dari luar jaringan lokal.
 
 ---
 
@@ -144,18 +142,13 @@ Dashboard page dilindungi dengan `ProtectedRoute`:
 
 ## 🔗 Backend Requirements
 
-Backend SSO harus berjalan di host yang bisa diakses dari jaringan luar, misalnya `http://41.216.191.39:4000`, dengan:
+Backend SSO harus berjalan di `http://41.216.191.39:4000` dengan:
 - `/oauth/authorize` endpoint
 - `/oauth/token` endpoint
 - `/oauth/userinfo` endpoint
 - `/oauth/logout` endpoint
 - `/sessions` endpoint
 - `/consent` endpoint
-
-Untuk deployment VPS, pastikan juga:
-- `redirect_uri` yang dipakai frontend sudah didaftarkan di backend OAuth persis sama, termasuk protocol, host, port, dan path.
-- CORS backend mengizinkan origin frontend Pay dan SSO.
-- Service backend listen ke `0.0.0.0`, bukan hanya `localhost`, supaya bisa diakses dari luar server.
 
 ---
 

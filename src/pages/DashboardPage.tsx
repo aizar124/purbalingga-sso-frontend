@@ -85,7 +85,7 @@ const normalizeOptionalValue = (value: string) => {
 };
 
 export const DashboardPage: React.FC = () => {
-  const { user, logout, returnToPayHome, canReturnToPayHome } = useAuth();
+  const { user, logout, returnToPayHome, canReturnToPayHome, returnToSmartCityHome, canReturnToSmartCityHome } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [consents, setConsents] = useState<Consent[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string>(user?.picture || '');
@@ -326,6 +326,17 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="topbar-actions">
+          {canReturnToSmartCityHome && (
+            <motion.button
+              className="btn btn-primary"
+              onClick={returnToSmartCityHome}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Kembali ke Smart City
+            </motion.button>
+          )}
+
           {canReturnToPayHome && (
             <motion.button
               className="btn btn-primary"

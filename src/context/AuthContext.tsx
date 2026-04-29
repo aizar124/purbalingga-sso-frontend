@@ -25,6 +25,8 @@ export interface AuthContextType {
   loginWithSSO: (targetApp?: 'sso' | 'pay') => void;
   canReturnToPayHome: boolean;
   returnToPayHome: () => void;
+  canReturnToSmartCityHome: boolean;
+  returnToSmartCityHome: () => void;
   register: (email: string, password: string, name: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -37,17 +39,31 @@ const getBootstrapSsoAccessToken = () => {
     return null;
   }
 
-  return new URLSearchParams(window.location.search).get('sso_access_token');
+  const params = new URLSearchParams(window.location.search);
+  return params.get('sso_access_token') || params.get('token') || params.get('auth_token');
+};
+
+const getBootstrapSessionSource = (): 'sso' | 'pay' | 'smartcity' | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const source = new URLSearchParams(window.location.search).get('source');
+  if (source === 'pay' || source === 'sso' || source === 'smartcity') {
+    return source;
+  }
+
+  return null;
 };
 
 const SESSION_ORIGIN_KEY = 'auth_session_origin';
-const getStoredSessionOrigin = (): 'sso' | 'pay' | null => {
+const getStoredSessionOrigin = (): 'sso' | 'pay' | 'smartcity' | null => {
   if (typeof window === 'undefined') {
     return null;
   }
 
   const value = localStorage.getItem(SESSION_ORIGIN_KEY);
-  return value === 'pay' || value === 'sso' ? value : null;
+  return value === 'pay' || value === 'sso' || value === 'smartcity' ? value : null;
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,14 +73,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     Boolean(localStorage.getItem('access_token')) || Boolean(getBootstrapSsoAccessToken())
   );
   const [error, setError] = useState<string | null>(null);
-  const [sessionOrigin, setSessionOrigin] = useState<'sso' | 'pay' | null>(getStoredSessionOrigin());
+  const [sessionOrigin, setSessionOrigin] = useState<'sso' | 'pay' | 'smartcity' | null>(getStoredSessionOrigin());
 
   const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://41.216.191.39:4000';
   const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
   const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
-  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || `${window.location.origin}/callback`;
+  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || 'http://41.216.191.39:5174/callback';
   const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'http://41.216.191.39:5173/callback';
   const PAY_HOME_URL = import.meta.env.VITE_PAY_HOME_URL || PAY_REDIRECT_URI.replace(/\/callback\/?$/, '');
+  const SMARTCITY_HOME_URL = import.meta.env.VITE_SMARTCITY_HOME_URL || 'http://41.216.191.37:5173';
 
   // Generate random string
   const generateRandomString = (length: number) => {
@@ -229,7 +246,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('refresh_token', res.data.refresh_token);
       localStorage.setItem('id_token', res.data.id_token);
       setToken(res.data.access_token);
-      setSessionOrigin((localStorage.getItem(SESSION_ORIGIN_KEY) as 'sso' | 'pay' | null) || 'sso');
+      setSessionOrigin((localStorage.getItem(SESSION_ORIGIN_KEY) as 'sso' | 'pay' | 'smartcity' | null) || 'sso');
 
       // Fetch user info
       console.log('Fetching user info...');
@@ -286,14 +303,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Current path:', window.location.pathname);
 
       const bootstrapToken = getBootstrapSsoAccessToken();
+      const bootstrapSource = getBootstrapSessionSource();
       const storedToken = localStorage.getItem('access_token');
 
       if (bootstrapToken) {
-        console.log('Found bootstrap token from Pay profile, hydrating SSO session...');
+        console.log('Found bootstrap token from external app, hydrating SSO session...');
         localStorage.setItem('access_token', bootstrapToken);
-        localStorage.setItem(SESSION_ORIGIN_KEY, 'pay');
+        const bootstrapOrigin = bootstrapSource || (new URLSearchParams(window.location.search).has('sso_access_token') ? 'pay' : 'smartcity');
+        localStorage.setItem(SESSION_ORIGIN_KEY, bootstrapOrigin);
         setToken(bootstrapToken);
-        setSessionOrigin('pay');
+        setSessionOrigin(bootstrapOrigin);
 
         try {
           const res = await api.get('/oauth/userinfo');
@@ -324,7 +343,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedToken) {
         console.log('Found stored token, fetching user info...');
         setToken(storedToken);
-        setSessionOrigin((getStoredSessionOrigin() as 'sso' | 'pay' | null) || 'sso');
+        setSessionOrigin((getStoredSessionOrigin() as 'sso' | 'pay' | 'smartcity' | null) || 'sso');
         try {
           const res = await api.get('/oauth/userinfo');
           console.log('User logged in:', res.data);
@@ -344,6 +363,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [handleCallback]);
 
   const clearError = () => setError(null);
+  const bootstrapSource = getBootstrapSessionSource();
+  const canReturnToSmartCityHome = sessionOrigin === 'smartcity' || bootstrapSource === 'smartcity';
+
+  const returnToSmartCityHome = useCallback(() => {
+    try {
+      if (!SMARTCITY_HOME_URL) {
+        throw new Error('URL utama Smart City belum dikonfigurasi.');
+      }
+
+      window.location.href = SMARTCITY_HOME_URL;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal kembali ke Smart City');
+      console.error(err);
+    }
+  }, [SMARTCITY_HOME_URL]);
 
   return (
     <AuthContext.Provider
@@ -354,10 +388,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         loginWithSSO,
         canReturnToPayHome: sessionOrigin === 'pay',
+        canReturnToSmartCityHome,
         register,
         logout,
         clearError,
         returnToPayHome,
+        returnToSmartCityHome,
       }}
     >
       {children}

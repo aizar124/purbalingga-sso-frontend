@@ -10,7 +10,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Server berjalan di `http://localhost:5174`
+Server berjalan di `https://sso.qode.my.id`
 
 ---
 
@@ -44,10 +44,10 @@ src/
 Edit `.env`:
 
 ```env
-VITE_SSO_URL=http://localhost:4000
+VITE_SSO_URL=https://apisso.qode.my.id
 VITE_CLIENT_ID=purbalingga-pay
-VITE_REDIRECT_URI=http://localhost:5173/callback
-VITE_PAY_HOME_URL=http://localhost:5173
+VITE_REDIRECT_URI=https://smartpay.qode.my.id/callback
+VITE_PAY_HOME_URL=https://smartpay.qode.my.id
 VITE_SCOPE=openid profile email
 ```
 
@@ -142,7 +142,7 @@ Dashboard page dilindungi dengan `ProtectedRoute`:
 
 ## 🔗 Backend Requirements
 
-Backend SSO harus berjalan di `http://localhost:4000` dengan:
+Backend SSO harus berjalan di `https://apisso.qode.my.id` dengan:
 - `/oauth/authorize` endpoint
 - `/oauth/token` endpoint
 - `/oauth/userinfo` endpoint

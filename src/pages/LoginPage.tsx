@@ -20,11 +20,11 @@ export const LoginPage: React.FC = () => {
     'code_challenge_method',
     'nonce',
   ] as const;
-  const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://41.216.191.39:4000';
+  const SSO_URL = import.meta.env.VITE_SSO_URL || 'https://apisso.qode.my.id';
   const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
   const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
-  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || 'http://41.216.191.39:5174/callback';
-  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'http://41.216.191.39:5173/callback';
+  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || 'https://sso.qode.my.id/callback';
+  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'https://smartpay.qode.my.id/callback';
   const SCOPE = import.meta.env.VITE_SCOPE || 'openid profile email';
   const DEFAULT_TARGET_APP: 'sso' | 'pay' = 'sso';
 

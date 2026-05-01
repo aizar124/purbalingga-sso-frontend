@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const SSO_URL = import.meta.env.VITE_SSO_URL || 'http://41.216.191.39:4000';
+const SSO_URL = import.meta.env.VITE_SSO_URL || 'https://apisso.qode.my.id';
 
 const api = axios.create({
   baseURL: SSO_URL,

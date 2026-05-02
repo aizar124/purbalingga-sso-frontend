@@ -1,9 +1,8 @@
 import axios from 'axios';
-
-const SSO_URL = import.meta.env.VITE_SSO_URL || 'https://apisso.qode.my.id';
+import { SSO_BASE_URL } from '../config/sso';
 
 const api = axios.create({
-  baseURL: SSO_URL,
+  baseURL: SSO_BASE_URL,
   withCredentials: true,
 });
 

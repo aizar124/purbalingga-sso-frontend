@@ -1,5 +1,13 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import {
+  DEFAULT_SCOPE,
+  PAY_HOME_URL,
+  PAY_REDIRECT_URI,
+  SMARTCITY_HOME_URL,
+  SSO_BASE_URL,
+  SSO_REDIRECT_URI,
+} from '../config/sso';
 
 export interface User {
   id: string;
@@ -75,13 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [sessionOrigin, setSessionOrigin] = useState<'sso' | 'pay' | 'smartcity' | null>(getStoredSessionOrigin());
 
-  const SSO_URL = import.meta.env.VITE_SSO_URL || 'https://apisso.qode.my.id';
   const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
   const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
-  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || 'https://sso.qode.my.id/callback';
-  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'https://smartpay.qode.my.id/callback';
-  const PAY_HOME_URL = import.meta.env.VITE_PAY_HOME_URL || 'https://smartpay.qode.my.id';
-  const SMARTCITY_HOME_URL = import.meta.env.VITE_SMARTCITY_HOME_URL || 'https://smartcity.qode.my.id';
 
   // Generate random string
   const generateRandomString = (length: number) => {
@@ -127,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('oauth_response_type', 'code');
       localStorage.setItem('oauth_client_id', clientId);
       localStorage.setItem('oauth_redirect_uri', redirectUri);
-      localStorage.setItem('oauth_scope', import.meta.env.VITE_SCOPE || 'openid profile email');
+      localStorage.setItem('oauth_scope', import.meta.env.VITE_SCOPE || DEFAULT_SCOPE);
       localStorage.setItem('oauth_code_challenge', codeChallenge);
       localStorage.setItem('oauth_code_challenge_method', 'S256');
       localStorage.setItem(SESSION_ORIGIN_KEY, targetApp);
@@ -141,21 +144,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         response_type: 'code',
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: import.meta.env.VITE_SCOPE || 'openid profile email',
+        scope: import.meta.env.VITE_SCOPE || DEFAULT_SCOPE,
         state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
         nonce,
       });
 
-      const authUrl = `${SSO_URL}/oauth/authorize?${params.toString()}`;
+      const authUrl = `${SSO_BASE_URL}/oauth/authorize?${params.toString()}`;
       console.log('Redirecting to:', authUrl);
       window.location.href = authUrl;
     } catch (err) {
       setError('Failed to initiate login');
       console.error(err);
     }
-  }, [PAY_CLIENT_ID, PAY_REDIRECT_URI, SSO_CLIENT_ID, SSO_REDIRECT_URI, SSO_URL]);
+  }, [PAY_CLIENT_ID, PAY_REDIRECT_URI, SSO_CLIENT_ID, SSO_REDIRECT_URI]);
 
   const returnToPayHome = useCallback(() => {
     try {

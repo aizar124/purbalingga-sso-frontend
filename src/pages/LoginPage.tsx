@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import {
+  DEFAULT_SCOPE,
+  PAY_REDIRECT_URI,
+  SSO_BASE_URL,
+  SSO_REDIRECT_URI,
+} from '../config/sso';
 import './AuthPages.css';
 
 export const LoginPage: React.FC = () => {
@@ -20,12 +26,9 @@ export const LoginPage: React.FC = () => {
     'code_challenge_method',
     'nonce',
   ] as const;
-  const SSO_URL = import.meta.env.VITE_SSO_URL || 'https://apisso.qode.my.id';
   const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
   const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
-  const SSO_REDIRECT_URI = import.meta.env.VITE_SSO_REDIRECT_URI || 'https://sso.qode.my.id/callback';
-  const PAY_REDIRECT_URI = import.meta.env.VITE_PAY_REDIRECT_URI || 'https://smartpay.qode.my.id/callback';
-  const SCOPE = import.meta.env.VITE_SCOPE || 'openid profile email';
+  const SCOPE = import.meta.env.VITE_SCOPE || DEFAULT_SCOPE;
   const DEFAULT_TARGET_APP: 'sso' | 'pay' = 'sso';
 
   const resolveTargetApp = () => {
@@ -155,7 +158,7 @@ export const LoginPage: React.FC = () => {
       oauthParams.set('redirect_uri', targetApp === 'pay' ? PAY_REDIRECT_URI : SSO_REDIRECT_URI);
     }
 
-    window.location.href = `${SSO_URL}/oauth/authorize?${oauthParams.toString()}`;
+    window.location.href = `${SSO_BASE_URL}/oauth/authorize?${oauthParams.toString()}`;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -164,7 +167,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${SSO_URL}/auth/login`, {
+      const response = await fetch(`${SSO_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -200,7 +203,7 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${SSO_URL}/auth/login/mfa`, {
+      const response = await fetch(`${SSO_BASE_URL}/auth/login/mfa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

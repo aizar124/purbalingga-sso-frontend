@@ -342,6 +342,9 @@ export const LoginPage: React.FC = () => {
 
         <motion.div className="auth-footer" custom={3} variants={itemVariants} initial="hidden" animate="visible">
           <p>
+            <a href="/forgot-password">Lupa password?</a>
+          </p>
+          <p>
             Belum punya akun? <a href="/register">Daftar di sini</a>
           </p>
         </motion.div>

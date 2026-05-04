@@ -21,6 +21,9 @@ src/
 ├── pages/             # Page components
 │   ├── LoginPage.tsx
 │   ├── RegisterPage.tsx
+│   ├── ForgotPasswordPage.tsx
+│   ├── ResetPasswordPage.tsx
+│   ├── VerifiedPage.tsx
 │   ├── CallbackPage.tsx
 │   ├── DashboardPage.tsx
 │   ├── AuthPages.css
@@ -62,6 +65,15 @@ VITE_SCOPE=openid profile email
 ### RegisterPage (`/register`)
 - User dapat mendaftar akun baru
 - Email verification diperlukan
+
+### ForgotPasswordPage (`/forgot-password`)
+- User dapat minta link reset password
+
+### ResetPasswordPage (`/reset-password`)
+- User dapat set password baru dari link email
+
+### VerifiedPage (`/verified`)
+- Halaman sukses setelah email diverifikasi
 
 ### CallbackPage (`/callback`)
 - Halaman callback dari SSO

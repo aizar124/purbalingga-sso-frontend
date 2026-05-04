@@ -138,6 +138,22 @@
   text-align: center;
   color: var(--muted);
   font-size: 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.auth-footer-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.auth-footer-note {
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .auth-footer a {

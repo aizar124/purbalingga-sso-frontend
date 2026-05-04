@@ -10,7 +10,7 @@ import {
 import './AuthPages.css';
 
 export const LoginPage: React.FC = () => {
-  const { loading, error, clearError, loginWithSSO } = useAuth();
+  const { loading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
@@ -282,16 +282,6 @@ export const LoginPage: React.FC = () => {
             >
               {loading ? 'Sedang masuk...' : 'Masuk'}
             </motion.button>
-            <motion.button
-              className="btn btn-secondary"
-              type="button"
-              onClick={() => loginWithSSO('sso')}
-              disabled={loading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              Masuk dengan SSO (Test)
-            </motion.button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleMfaSubmit}>
@@ -341,12 +331,11 @@ export const LoginPage: React.FC = () => {
         )}
 
         <motion.div className="auth-footer" custom={3} variants={itemVariants} initial="hidden" animate="visible">
-          <p>
+          <div className="auth-footer-links">
             <a href="/forgot-password">Lupa password?</a>
-          </p>
-          <p>
-            Belum punya akun? <a href="/register">Daftar di sini</a>
-          </p>
+            <a href="/register">Daftar di sini</a>
+          </div>
+          <p className="auth-footer-note">Masuk dengan email dan password akun SSO Anda.</p>
         </motion.div>
       </motion.div>
     </div>

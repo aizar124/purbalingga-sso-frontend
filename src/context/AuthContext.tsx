@@ -1,11 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import {
-  DEFAULT_SCOPE,
   PAY_HOME_URL,
-  PAY_REDIRECT_URI,
   SMARTCITY_HOME_URL,
-  SSO_BASE_URL,
   SSO_REDIRECT_URI,
 } from '../config/sso';
 
@@ -30,7 +27,6 @@ export interface AuthContextType {
   token: string | null;
   loading: boolean;
   error: string | null;
-  loginWithSSO: (targetApp?: 'sso' | 'pay') => void;
   canReturnToPayHome: boolean;
   returnToPayHome: () => void;
   canReturnToSmartCityHome: boolean;
@@ -84,81 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sessionOrigin, setSessionOrigin] = useState<'sso' | 'pay' | 'smartcity' | null>(getStoredSessionOrigin());
 
   const SSO_CLIENT_ID = import.meta.env.VITE_SSO_CLIENT_ID || 'purbalingga-sso';
-  const PAY_CLIENT_ID = import.meta.env.VITE_PAY_CLIENT_ID || 'purbalingga-pay';
-
-  // Generate random string
-  const generateRandomString = (length: number) => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
-  // Generate code verifier for PKCE
-  const generateCodeVerifier = () => generateRandomString(128);
-
-  // Generate code challenge from verifier (SHA256)
-  const generateCodeChallenge = async (verifier: string) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    const bytes = new Uint8Array(hash);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  };
-
-  // Login with SSO
-  const loginWithSSO = useCallback(async (targetApp: 'sso' | 'pay' = 'sso') => {
-    try {
-      setError(null);
-      const codeVerifier = generateCodeVerifier();
-      const codeChallenge = await generateCodeChallenge(codeVerifier);
-      const state = generateRandomString(32);
-      const nonce = generateRandomString(32);
-      const clientId = targetApp === 'pay' ? PAY_CLIENT_ID : SSO_CLIENT_ID;
-      const redirectUri = targetApp === 'pay' ? PAY_REDIRECT_URI : SSO_REDIRECT_URI;
-
-      // Save to localStorage (persist across page reload)
-      localStorage.setItem('pkce_verifier', codeVerifier);
-      localStorage.setItem('oauth_state', state);
-      localStorage.setItem('oauth_nonce', nonce);
-      localStorage.setItem('oauth_response_type', 'code');
-      localStorage.setItem('oauth_client_id', clientId);
-      localStorage.setItem('oauth_redirect_uri', redirectUri);
-      localStorage.setItem('oauth_scope', import.meta.env.VITE_SCOPE || DEFAULT_SCOPE);
-      localStorage.setItem('oauth_code_challenge', codeChallenge);
-      localStorage.setItem('oauth_code_challenge_method', 'S256');
-      localStorage.setItem(SESSION_ORIGIN_KEY, targetApp);
-
-      console.log('OAuth params saved to localStorage');
-      console.log('PKCE verifier:', codeVerifier.substring(0, 20) + '...');
-      console.log('Code challenge:', codeChallenge);
-      console.log('State:', state);
-
-      const params = new URLSearchParams({
-        response_type: 'code',
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        scope: import.meta.env.VITE_SCOPE || DEFAULT_SCOPE,
-        state,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256',
-        nonce,
-      });
-
-      const authUrl = `${SSO_BASE_URL}/oauth/authorize?${params.toString()}`;
-      console.log('Redirecting to:', authUrl);
-      window.location.href = authUrl;
-    } catch (err) {
-      setError('Failed to initiate login');
-      console.error(err);
-    }
-  }, [PAY_CLIENT_ID, PAY_REDIRECT_URI, SSO_CLIENT_ID, SSO_REDIRECT_URI]);
 
   const returnToPayHome = useCallback(() => {
     try {
@@ -385,14 +306,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider
       value={{
-        user,
-        token,
-        loading,
-        error,
-        loginWithSSO,
-        canReturnToPayHome: sessionOrigin === 'pay',
-        canReturnToSmartCityHome,
-        register,
+      user,
+      token,
+      loading,
+      error,
+      canReturnToPayHome: sessionOrigin === 'pay',
+      canReturnToSmartCityHome,
+      register,
         logout,
         clearError,
         returnToPayHome,

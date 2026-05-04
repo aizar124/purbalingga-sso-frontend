@@ -20,6 +20,7 @@ export interface User {
   bio?: string;
   gender?: string;
   scopes?: string[];
+  lastLoginAt?: string;
 }
 
 export interface AuthContextType {

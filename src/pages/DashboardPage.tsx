@@ -9,13 +9,30 @@ interface Session {
   userAgent: string;
   ip: string;
   createdAt: string;
+  isCurrent?: boolean;
+  deviceName?: string;
+  browser?: string;
+  platform?: string;
+  location?: string;
+  lastUsedAt?: string;
+  updatedAt?: string;
+  loginAt?: string;
+  created_at?: string;
+  last_used_at?: string;
+  updated_at?: string;
+  login_at?: string;
 }
 
 interface Consent {
   id: string;
   clientId: string;
+  clientName?: string;
   scopes: string[];
   grantedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ProfileFormState {
@@ -55,33 +72,183 @@ const formatDateTime = (value?: string) => {
   });
 };
 
-const formatRelativeDays = (value?: string) => {
-  if (!value) {
-    return '-';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '-';
-  }
-
-  const diff = Date.now() - date.getTime();
-  const days = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-
-  if (days === 0) {
-    return 'Hari ini';
-  }
-
-  if (days === 1) {
-    return '1 hari lalu';
-  }
-
-  return `${days} hari lalu`;
-};
-
 const normalizeOptionalValue = (value: string) => {
   const trimmed = value.trim();
   return trimmed === '' ? undefined : trimmed;
+};
+
+const extractArrayPayload = (payload: unknown, primaryKeys: string[]): unknown[] => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const record = payload as Record<string, unknown>;
+
+  for (const key of primaryKeys) {
+    const value = record[key];
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  const nested = record.data;
+  if (Array.isArray(nested)) {
+    return nested;
+  }
+
+  if (nested && typeof nested === 'object') {
+    const nestedRecord = nested as Record<string, unknown>;
+    for (const key of primaryKeys) {
+      const value = nestedRecord[key];
+      if (Array.isArray(value)) {
+        return value;
+      }
+    }
+
+    if (Array.isArray(nestedRecord.items)) {
+      return nestedRecord.items;
+    }
+
+    if (Array.isArray(nestedRecord.results)) {
+      return nestedRecord.results;
+    }
+  }
+
+  if (Array.isArray(record.items)) {
+    return record.items;
+  }
+
+  if (Array.isArray(record.results)) {
+    return record.results;
+  }
+
+  return [];
+};
+
+const pickTimestamp = (session?: Session | null) =>
+  session?.lastUsedAt ||
+  session?.updatedAt ||
+  session?.loginAt ||
+  session?.last_used_at ||
+  session?.updated_at ||
+  session?.login_at ||
+  session?.createdAt ||
+  session?.created_at ||
+  '';
+
+const describeSession = (session: Session) => {
+  const ua = session.userAgent || '';
+  const browser =
+    session.browser ||
+    (ua.includes('Chrome')
+      ? 'Chrome'
+      : ua.includes('Firefox')
+        ? 'Firefox'
+        : ua.includes('Safari') && !ua.includes('Chrome')
+          ? 'Safari'
+          : ua.includes('Edg')
+            ? 'Edge'
+            : undefined);
+  const platform =
+    session.platform ||
+    (ua.includes('Windows')
+      ? 'Windows'
+      : ua.includes('Mac OS') || ua.includes('Macintosh')
+        ? 'macOS'
+        : ua.includes('Android')
+          ? 'Android'
+          : ua.includes('iPhone') || ua.includes('iPad')
+            ? 'iOS'
+            : ua.includes('Linux')
+              ? 'Linux'
+              : undefined);
+
+  return {
+    browser: browser || 'Browser tidak dikenali',
+    platform: platform || 'Platform tidak dikenali',
+  };
+};
+
+const normalizeSessions = (payload: unknown): Session[] => {
+  const rawSessions = extractArrayPayload(payload, ['sessions', 'activeSessions', 'sessionList']);
+
+  return rawSessions
+    .map((item, index) => {
+      const session = item as Record<string, unknown>;
+      const createdAt =
+        typeof session.createdAt === 'string'
+          ? session.createdAt
+          : typeof session.created_at === 'string'
+            ? session.created_at
+            : '';
+
+      return {
+        id: String(session.id || session.sessionId || session.sid || createdAt || `session-${index}`),
+        userAgent: String(session.userAgent || session.user_agent || session.device || ''),
+        ip: String(session.ip || session.ipAddress || session.ip_address || ''),
+        createdAt,
+        isCurrent:
+          typeof session.isCurrent === 'boolean'
+            ? session.isCurrent
+            : typeof session.current === 'boolean'
+              ? session.current
+              : typeof session.active === 'boolean'
+                ? session.active
+                : undefined,
+        deviceName: typeof session.deviceName === 'string' ? session.deviceName : undefined,
+        browser: typeof session.browser === 'string' ? session.browser : undefined,
+        platform: typeof session.platform === 'string' ? session.platform : undefined,
+        location: typeof session.location === 'string' ? session.location : undefined,
+        lastUsedAt: typeof session.lastUsedAt === 'string' ? session.lastUsedAt : undefined,
+        updatedAt: typeof session.updatedAt === 'string' ? session.updatedAt : undefined,
+        loginAt: typeof session.loginAt === 'string' ? session.loginAt : undefined,
+        created_at: typeof session.created_at === 'string' ? session.created_at : undefined,
+        last_used_at: typeof session.last_used_at === 'string' ? session.last_used_at : undefined,
+        updated_at: typeof session.updated_at === 'string' ? session.updated_at : undefined,
+        login_at: typeof session.login_at === 'string' ? session.login_at : undefined,
+      } as Session;
+    })
+    .sort((a, b) => new Date(pickTimestamp(b)).getTime() - new Date(pickTimestamp(a)).getTime());
+};
+
+const normalizeConsents = (payload: unknown): Consent[] => {
+  const rawConsents = extractArrayPayload(payload, ['consents', 'consent', 'authorizedApps', 'apps']);
+
+  return rawConsents.map((item) => {
+    const consent = item as Record<string, unknown>;
+    const clientId = String(consent.clientId || consent.client_id || consent.client || '');
+
+    return {
+      id: String(consent.id || consent.consentId || consent.clientId || consent.client_id || clientId),
+      clientId,
+      clientName: typeof consent.clientName === 'string' ? consent.clientName : typeof consent.name === 'string' ? consent.name : undefined,
+      scopes: Array.isArray(consent.scopes)
+        ? consent.scopes.map((scope) => String(scope)).filter(Boolean)
+        : typeof consent.scope === 'string'
+          ? consent.scope.split(' ').map((scope) => scope.trim()).filter(Boolean)
+          : [],
+      grantedAt:
+        typeof consent.grantedAt === 'string'
+          ? consent.grantedAt
+          : typeof consent.createdAt === 'string'
+            ? consent.createdAt
+            : typeof consent.created_at === 'string'
+              ? consent.created_at
+              : typeof consent.updatedAt === 'string'
+                ? consent.updatedAt
+                : typeof consent.updated_at === 'string'
+                  ? consent.updated_at
+                  : '',
+      createdAt: typeof consent.createdAt === 'string' ? consent.createdAt : undefined,
+      updatedAt: typeof consent.updatedAt === 'string' ? consent.updatedAt : undefined,
+      created_at: typeof consent.created_at === 'string' ? consent.created_at : undefined,
+      updated_at: typeof consent.updated_at === 'string' ? consent.updated_at : undefined,
+    };
+  });
 };
 
 export const DashboardPage: React.FC = () => {
@@ -121,20 +288,27 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?.id]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      setSessions([]);
+      setConsents([]);
 
-      const [sessionsRes, consentsRes] = await Promise.all([
+      const [sessionsRes, consentsRes] = await Promise.allSettled([
         api.get('/sessions'),
         api.get('/consent'),
       ]);
 
-      setSessions(sessionsRes.data.sessions || []);
-      setConsents(consentsRes.data || []);
+      if (sessionsRes.status === 'fulfilled') {
+        setSessions(normalizeSessions(sessionsRes.value.data));
+      }
+
+      if (consentsRes.status === 'fulfilled') {
+        setConsents(normalizeConsents(consentsRes.value.data));
+      }
 
       try {
         const profileRes = await api.get('/users/me');
@@ -296,6 +470,8 @@ export const DashboardPage: React.FC = () => {
   );
 
   const latestSession = sessions[0];
+  const resolvedLastLoginAt = user?.lastLoginAt || latestSession?.createdAt || latestSession?.loginAt || latestSession?.updatedAt;
+  const currentSession = sessions.find((session) => session.isCurrent) || latestSession;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -400,8 +576,12 @@ export const DashboardPage: React.FC = () => {
                   <strong>{user?.role || 'user'}</strong>
                 </div>
                 <div>
-                  <span>Sesi terbaru</span>
-                  <strong>{formatRelativeDays(latestSession?.createdAt)}</strong>
+                  <span>Login terakhir</span>
+                  <strong>{formatDateTime(resolvedLastLoginAt)}</strong>
+                </div>
+                <div>
+                  <span>Sesi ini</span>
+                  <strong>{currentSession ? describeSession(currentSession).browser : '-'}</strong>
                 </div>
               </div>
 
@@ -423,9 +603,14 @@ export const DashboardPage: React.FC = () => {
               <p>Gunakan username yang mudah dikenali untuk layanan publik.</p>
             </article>
             <article className="mini-card">
-              <span>Login terakhir</span>
-              <strong>{formatDateTime(latestSession?.createdAt)}</strong>
-              <p>Pantau aktivitas akun untuk menjaga keamanan akses.</p>
+              <span>Sesi terbaru</span>
+              <strong>{formatDateTime(latestSession?.createdAt || pickTimestamp(latestSession))}</strong>
+              <p>Sesi paling baru menjadi referensi untuk aktivitas login terakhir di dashboard ini.</p>
+            </article>
+            <article className="mini-card">
+              <span>Sesi aktif saat ini</span>
+              <strong>{currentSession ? describeSession(currentSession).platform : '-'}</strong>
+              <p>{currentSession?.location || 'Lokasi sesi tidak tersedia dari backend.'}</p>
             </article>
           </div>
         </motion.section>
@@ -568,8 +753,8 @@ export const DashboardPage: React.FC = () => {
                   <strong>{loading ? '...' : consents.length}</strong>
                 </div>
                 <div className="summary-item">
-                  <span>Status akun</span>
-                  <strong>Terproteksi</strong>
+                  <span>Login terakhir</span>
+                  <strong>{loading ? '...' : formatDateTime(resolvedLastLoginAt)}</strong>
                 </div>
               </div>
             </section>
@@ -623,8 +808,16 @@ export const DashboardPage: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                     >
                       <div>
-                        <strong>{session.userAgent || 'Perangkat tidak dikenali'}</strong>
-                        <p>IP {session.ip || '-'} • {formatDateTime(session.createdAt)}</p>
+                        <div className="stack-heading">
+                          <strong>{session.deviceName || describeSession(session).browser}</strong>
+                          {session.isCurrent && <span className="session-tag session-tag-current">Sesi ini</span>}
+                          {!session.isCurrent && session === latestSession && (
+                            <span className="session-tag session-tag-latest">Terbaru</span>
+                          )}
+                        </div>
+                        <p>{describeSession(session).platform} • {session.location || 'Lokasi tidak tersedia'}</p>
+                        <p>IP {session.ip || '-'} • Login {formatDateTime(session.createdAt)}</p>
+                        <p className="session-user-agent">{session.userAgent || 'Perangkat tidak dikenali'}</p>
                       </div>
 
                       <button
@@ -660,7 +853,11 @@ export const DashboardPage: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                     >
                       <div>
-                        <strong>{consent.clientId}</strong>
+                        <div className="stack-heading">
+                          <strong>{consent.clientName || consent.clientId}</strong>
+                          <span className="session-tag">Terkoneksi</span>
+                        </div>
+                        <p>ID aplikasi: {consent.clientId}</p>
                         <p>Izin: {consent.scopes?.join(', ') || 'profile, email'}</p>
                         <p>Diberikan: {formatDateTime(consent.grantedAt)}</p>
                       </div>

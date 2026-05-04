@@ -429,6 +429,41 @@
   color: var(--foreground);
 }
 
+.stack-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.session-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(64, 114, 175, 0.1);
+  color: #28558d;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.session-tag-current {
+  background: rgba(16, 185, 129, 0.14);
+  color: #0b7a58;
+}
+
+.session-tag-latest {
+  background: rgba(245, 158, 11, 0.14);
+  color: #92400e;
+}
+
+.session-user-agent {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
 .empty-state {
   color: var(--muted);
 }
